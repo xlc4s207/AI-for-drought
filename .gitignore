@@ -1,0 +1,47 @@
+# Python cache and environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# Logs and runtime files
+*.log
+*.pid
+
+# Office documents and slide decks
+*.doc
+*.docx
+*.wps
+*.ppt
+*.pptx
+*.xlsx
+
+# Figures and rendered media
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.pdf
+
+# Data and analysis artifacts
+*.parquet
+*.feather
+*.nc
+*.npy
+*.npz
+*.csv
+
+# Project-specific generated outputs
+SEM_analysis0401/codex/GLEAM/results/
+SEM_analysis0401/codex/GLEAM/data/
+SEM_analysis0401/codex/GLEAM/plots/beeswarm/
+SEM_analysis0401/codex/GLEAM/plots/dependence_plot/
+SEM_analysis0401/codex/GLEAM/plots/writing2/
+SEM_analysis0401/codex/GLEAM/plots/gpp_code1_flash_smrz_compare_prepeak_vs_recoverywin_v20260401_20260424/
+SEM_analysis0401/codex/GLEAM/plots/reco_code1_flash_smrz_compare_prepeak_vs_recoverywin_v20260401_20260424/
+SEM_analysis0401/codex/GLEAM/code/__pycache__/
+SEM_analysis0401/codex/GLEAM/code/tests/__pycache__/
+
