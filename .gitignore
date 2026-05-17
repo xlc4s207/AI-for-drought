@@ -33,6 +33,12 @@ venv/
 *.npy
 *.npz
 *.csv
+*.json
+*.html
+*.odt
+*.xml
+*.tif
+*.tiff
 
 # Project-specific generated outputs
 SEM_analysis0401/codex/GLEAM/results/
@@ -44,4 +50,3 @@ SEM_analysis0401/codex/GLEAM/plots/gpp_code1_flash_smrz_compare_prepeak_vs_recov
 SEM_analysis0401/codex/GLEAM/plots/reco_code1_flash_smrz_compare_prepeak_vs_recoverywin_v20260401_20260424/
 SEM_analysis0401/codex/GLEAM/code/__pycache__/
 SEM_analysis0401/codex/GLEAM/code/tests/__pycache__/
-
