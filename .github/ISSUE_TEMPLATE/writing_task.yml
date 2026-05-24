@@ -1,0 +1,28 @@
+name: Writing task
+description: Track manuscript, method, discussion, or documentation writing.
+title: "[writing] "
+labels:
+  - type:writing
+body:
+  - type: textarea
+    id: target
+    attributes:
+      label: Target section or document
+      description: Manuscript section, method note, README, or discussion file.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence base
+      description: Analyses, figures, tables, and validation outputs supporting the writing.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: What should the finished text accomplish?
+    validations:
+      required: true
+

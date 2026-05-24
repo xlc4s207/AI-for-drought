@@ -1,0 +1,32 @@
+name: Bug report
+description: Report a failing script, incorrect output, missing data, or regression.
+title: "[bug] "
+labels:
+  - type:bug
+body:
+  - type: textarea
+    id: symptom
+    attributes:
+      label: Symptom
+      description: What failed? Include command, error, or unexpected output.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Minimal command, input paths, and environment needed to reproduce.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Fix validation
+      description: What test or smoke check should pass after the fix?
+

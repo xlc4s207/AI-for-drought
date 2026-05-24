@@ -1,0 +1,33 @@
+name: Data task
+description: Track data preprocessing, extraction, repair, or inventory work.
+title: "[data] "
+labels:
+  - type:data
+body:
+  - type: textarea
+    id: source
+    attributes:
+      label: Data source
+      description: Dataset, years, variables, spatial/temporal resolution.
+    validations:
+      required: true
+  - type: textarea
+    id: transform
+    attributes:
+      label: Transform or repair
+      description: Processing steps, expected scripts, and output location.
+    validations:
+      required: true
+  - type: textarea
+    id: quality_checks
+    attributes:
+      label: Quality checks
+      description: Shape/time-axis checks, missing values, checksums, sample comparisons, or smoke tests.
+    validations:
+      required: true
+  - type: textarea
+    id: generated_artifacts
+    attributes:
+      label: Generated artifacts
+      description: List large outputs that should not be committed and the manifest/summary that should be committed.
+

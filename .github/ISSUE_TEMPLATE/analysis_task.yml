@@ -1,0 +1,41 @@
+name: Analysis task
+description: Track a scientific analysis, robustness check, figure, or model comparison.
+title: "[analysis] "
+labels:
+  - type:analysis
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What scientific question does this task answer?
+      placeholder: "Example: Compare raw vs orthogonal prepeak predictors for GPP/RECO recovery time."
+    validations:
+      required: true
+  - type: textarea
+    id: inputs
+    attributes:
+      label: Inputs
+      description: Data files, metrics, years, biomes, drought type, soil layer.
+    validations:
+      required: true
+  - type: textarea
+    id: expected_outputs
+    attributes:
+      label: Expected outputs
+      description: Figures, tables, markdown summary, or manifest expected from this task.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation plan
+      description: How will correctness and scientific validity be checked?
+    validations:
+      required: true
+  - type: textarea
+    id: artifact_policy
+    attributes:
+      label: Artifact policy
+      description: Which outputs should stay outside Git, and what summary/manifest should be committed?
+
