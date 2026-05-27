@@ -1,0 +1,1 @@
+t_recover_to_baseline_abs_peak ~ event_intensity + event_duration + pre30_SMrz_mean + pre30_lai_total_mean + postpeak30_p_minus_et + postpeak30_SMrz_mean

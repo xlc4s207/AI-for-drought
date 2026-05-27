@@ -1,0 +1,8 @@
+# GPP pre-peak extended SEM.
+# Adds STRD and WIND as thermal/exchange upstream variables, following the
+# "main model + extended model + biome-specific model" logic in writing3/05.
+prepeak_temperature_2m_mean ~ prepeak_strd_mean
+prepeak_VPD_mean ~ prepeak_temperature_2m_mean + prepeak_wind_speed_mean
+prepeak_total_evaporation_mean ~ prepeak_ssrd_mean + prepeak_temperature_2m_mean + prepeak_VPD_mean + prepeak_total_precipitation_mean
+prepeak_SMrz_mean ~ prepeak_total_precipitation_mean + event_duration + prepeak_total_evaporation_mean
+t_recover_to_baseline_abs_peak ~ prepeak_SMrz_mean + prepeak_total_evaporation_mean + prepeak_VPD_mean + event_duration + prepeak_temperature_2m_mean

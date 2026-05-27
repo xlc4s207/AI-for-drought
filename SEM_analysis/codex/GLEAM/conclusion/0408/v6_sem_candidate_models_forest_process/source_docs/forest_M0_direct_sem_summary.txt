@@ -1,0 +1,9 @@
+biome=Forest
+table=/home/xulc/flash_drought/process/SEM_analysis/codex/GLEAM/data/feature_tables/gpp_code1_flash_smrz_rechunk_py/feature_table_merged_GPP_code1_flash_SMrz.parquet
+target=t_recover_to_baseline_abs_peak
+feature_scope=all
+rows=318380
+feature_count=13
+backend=semopy
+shap_results=/home/xulc/flash_drought/process/SEM_analysis/codex/GLEAM/results/gpp_code1_flash_smrz_rechunk_py_clean/shap_process_by_biome/Forest
+model_spec_file=/home/xulc/flash_drought/process/SEM_analysis/codex/GLEAM/code/sem_specs/gpp_code1_flash_smrz_forest_process_M0_direct_v20260406.txt

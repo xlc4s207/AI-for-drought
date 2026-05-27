@@ -1,0 +1,12 @@
+method=group_pca
+metric=RECO
+biome=Grassland
+rows=50000
+feature_count=4
+model_backend=lightgbm
+n_estimators=120
+shap_sample_rows=5000
+r2_train_split=0.3605628047002202
+r2_holdout_split=0.33191385637439186
+split_train_rows=40000
+split_test_rows=10000

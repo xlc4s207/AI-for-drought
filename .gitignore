@@ -48,9 +48,11 @@ batch_logs/
 *.pt
 *.tmp
 *.backup
+*.base
 
 # Project-specific generated outputs
 **/results/
+**/data/
 **/analysis_result/
 **/SMrz_result/
 **/SMrz_GPP_results/

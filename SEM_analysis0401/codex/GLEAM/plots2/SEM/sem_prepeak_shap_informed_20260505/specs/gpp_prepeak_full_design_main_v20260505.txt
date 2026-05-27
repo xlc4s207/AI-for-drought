@@ -1,0 +1,7 @@
+# GPP pre-peak full-design main SEM derived from writing3/05.
+# Main mechanism: water supply, shortwave-energy/evaporation, atmospheric dryness,
+# and event memory. LAI is excluded from the main model.
+prepeak_VPD_mean ~ prepeak_temperature_2m_mean
+prepeak_total_evaporation_mean ~ prepeak_ssrd_mean + prepeak_temperature_2m_mean + prepeak_VPD_mean
+prepeak_SMrz_mean ~ prepeak_total_precipitation_mean + event_duration
+t_recover_to_baseline_abs_peak ~ prepeak_SMrz_mean + prepeak_total_evaporation_mean + prepeak_VPD_mean + event_duration
