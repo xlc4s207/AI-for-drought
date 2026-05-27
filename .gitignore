@@ -30,6 +30,8 @@ venv/
 *.parquet
 *.feather
 *.nc
+*.nc.pid*
+*.RData
 *.npy
 *.npz
 *.csv
@@ -39,6 +41,9 @@ venv/
 *.xml
 *.tif
 *.tiff
+*.pt
+*.tmp
+*.backup
 
 # Project-specific generated outputs
 SEM_analysis0401/codex/GLEAM/results/
