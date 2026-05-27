@@ -80,6 +80,7 @@ EVENT_FEATURES = [
 ATMOS_FEATURES = [
     "Wind_z",
 ]
+SHAP_SIGN_FLIP_FEATURES: set[str] = set()
 
 
 def load_bundle(metric: str, biome: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -88,6 +89,20 @@ def load_bundle(metric: str, biome: str) -> tuple[pd.DataFrame, pd.DataFrame, pd
     shap_values = pd.read_parquet(folder / "dependence_sample_shap_values.parquet")
     importance = pd.read_csv(folder / "feature_importance.csv")
     return features, shap_values, importance
+
+
+def shap_for_display(values: pd.Series | pd.DataFrame, features: list[str] | None = None) -> pd.Series | pd.DataFrame:
+    """Return plotting-only SHAP values after applying feature sign conventions."""
+    out = values.copy()
+    if isinstance(out, pd.Series):
+        if out.name in SHAP_SIGN_FLIP_FEATURES:
+            out = -out
+        return out
+    selected = features if features is not None else list(out.columns)
+    for feature in selected:
+        if feature in SHAP_SIGN_FLIP_FEATURES and feature in out.columns:
+            out[feature] = -out[feature]
+    return out
 
 
 def robust_limits(values: np.ndarray, q_low: float = 0.01, q_high: float = 0.99) -> tuple[float, float]:
@@ -164,7 +179,8 @@ def plot_combined_beeswarm() -> Path:
             labels = [DISPLAY_LABELS.get(f, f) for f in order]
             features = X[order].apply(pd.to_numeric, errors="coerce").clip(-2.5, 2.5)
             features.columns = labels
-            shap_matrix = S[order].apply(pd.to_numeric, errors="coerce").to_numpy(dtype=float)
+            shap_display = shap_for_display(S[order].apply(pd.to_numeric, errors="coerce"), order)
+            shap_matrix = shap_display.to_numpy(dtype=float)
             finite_rows = np.isfinite(shap_matrix).all(axis=1) & np.isfinite(features.to_numpy(dtype=float)).all(axis=1)
             shap_matrix = shap_matrix[finite_rows]
             features = features.loc[finite_rows]
@@ -195,7 +211,7 @@ def plot_combined_beeswarm() -> Path:
             else:
                 ax.set_xlabel("")
             xlim = expanded_shap_limits(
-                np.concatenate([pd.to_numeric(S[f], errors="coerce").to_numpy(dtype=float) for f in order])
+                np.concatenate([pd.to_numeric(shap_display[f], errors="coerce").to_numpy(dtype=float) for f in order])
             )
             ax.set_xlim(xlim)
     fig.suptitle("Orthogonal decomposition SHAP beeswarm comparison: GPP vs RECO across biomes", fontsize=15, fontweight="bold", y=0.995)
@@ -217,7 +233,7 @@ def plot_combined_beeswarm() -> Path:
 
 def plot_dependence_panel(ax: plt.Axes, X: pd.DataFrame, S: pd.DataFrame, feature: str, metric: str) -> None:
     x = pd.to_numeric(X[feature], errors="coerce").to_numpy(dtype=float)
-    y = pd.to_numeric(S[feature], errors="coerce").to_numpy(dtype=float)
+    y = pd.to_numeric(shap_for_display(S[feature]), errors="coerce").to_numpy(dtype=float)
     x, y = clip_xy(x, y)
     ax.scatter(x, y, s=5.0, alpha=0.22, color="#315f86", linewidths=0, rasterized=True)
     tx, ty = binned_trend(x, y)
@@ -254,7 +270,7 @@ def plot_colored_dependence_panel(
     add_colorbar: bool = False,
 ) -> None:
     x = pd.to_numeric(X[feature], errors="coerce").to_numpy(dtype=float)
-    y = pd.to_numeric(S[feature], errors="coerce").to_numpy(dtype=float)
+    y = pd.to_numeric(shap_for_display(S[feature]), errors="coerce").to_numpy(dtype=float)
     c = pd.to_numeric(X[color_feature], errors="coerce").to_numpy(dtype=float)
     finite = np.isfinite(x) & np.isfinite(y) & np.isfinite(c)
     x = x[finite]

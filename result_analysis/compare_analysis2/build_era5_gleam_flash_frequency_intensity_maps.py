@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import csv
 import os
+import shutil
 from dataclasses import dataclass
 
 import matplotlib
@@ -18,12 +19,21 @@ import numpy as np
 
 BASE_DIR = "/home/xulc/flash_drought"
 OUT_DIR = (
+    f"{BASE_DIR}/process/result_analysis/result_weighted/compare_analysis2/"
+    "era5_vs_gleam_code1/flash_frequency_intensity_spatial"
+)
+MIRROR_OUT_DIR = (
     f"{BASE_DIR}/process/result_analysis/result_weighted/conclusion/"
     "gleam_era5_flash_frequency_intensity_spatial"
 )
 OUT_FREQ_PNG = os.path.join(OUT_DIR, "gleam_vs_era5_flash_frequency_global.png")
 OUT_INTENSITY_PNG = os.path.join(OUT_DIR, "gleam_vs_era5_flash_intensity_global.png")
 OUT_SUMMARY_CSV = os.path.join(OUT_DIR, "gleam_vs_era5_flash_frequency_intensity_summary.csv")
+MIRROR_FILES = {
+    OUT_FREQ_PNG: os.path.join(MIRROR_OUT_DIR, "gleam_vs_era5_flash_frequency_global.png"),
+    OUT_INTENSITY_PNG: os.path.join(MIRROR_OUT_DIR, "gleam_vs_era5_flash_intensity_global.png"),
+    OUT_SUMMARY_CSV: os.path.join(MIRROR_OUT_DIR, "gleam_vs_era5_flash_frequency_intensity_summary.csv"),
+}
 
 
 @dataclass(frozen=True)
@@ -252,6 +262,7 @@ def write_summary_csv(items: list[dict[str, np.ndarray | str]]) -> None:
 
 def main() -> None:
     os.makedirs(OUT_DIR, exist_ok=True)
+    os.makedirs(MIRROR_OUT_DIR, exist_ok=True)
     items = [load_scenario(s) for s in SCENARIOS]
     plot_four_panels(
         items=items,
@@ -270,6 +281,8 @@ def main() -> None:
         cmap="RdYlGn_r",
     )
     write_summary_csv(items)
+    for src, dst in MIRROR_FILES.items():
+        shutil.copy2(src, dst)
     print(f"Wrote {OUT_FREQ_PNG}")
     print(f"Wrote {OUT_INTENSITY_PNG}")
     print(f"Wrote {OUT_SUMMARY_CSV}")

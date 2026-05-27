@@ -10,6 +10,10 @@ venv/
 # Logs and runtime files
 *.log
 *.pid
+logs/
+batch_logs/
+**/__pycache__/
+**/.agent/
 
 # Office documents and slide decks
 *.doc
@@ -46,6 +50,19 @@ venv/
 *.backup
 
 # Project-specific generated outputs
+**/results/
+**/analysis_result/
+**/SMrz_result/
+**/SMrz_GPP_results/
+**/SMrz_RECO_results/
+**/SMs_GPP_results/
+**/SMs_RECO_results/
+**/code1/results/
+**/preprocess/results/
+result_analysis/result_weighted/
+result_analysis/performance/
+response_analysis/summary/
+flash_draught_GPP_RECO/analysis_result/
 SEM_analysis0401/codex/GLEAM/results/
 SEM_analysis0401/codex/GLEAM/data/
 SEM_analysis0401/codex/GLEAM/plots/beeswarm/
@@ -55,3 +72,10 @@ SEM_analysis0401/codex/GLEAM/plots/gpp_code1_flash_smrz_compare_prepeak_vs_recov
 SEM_analysis0401/codex/GLEAM/plots/reco_code1_flash_smrz_compare_prepeak_vs_recoverywin_v20260401_20260424/
 SEM_analysis0401/codex/GLEAM/code/__pycache__/
 SEM_analysis0401/codex/GLEAM/code/tests/__pycache__/
+
+# Generated SEM/model-spec outputs. Force-add curated specs if promoted to source.
+**/code/sem_specs/
+**/plots/SEM/**/sem_prepeak/
+**/plots/SEM/**/sem_recoverywin/
+**/plots/SEM/**/specs/
+*.mmd

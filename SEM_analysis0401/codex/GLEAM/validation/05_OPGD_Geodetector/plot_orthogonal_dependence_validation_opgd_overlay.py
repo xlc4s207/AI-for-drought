@@ -36,6 +36,8 @@ FEATURE_ORDER = [
     "Duration_z",
     "Intensity_z",
 ]
+PRE_REFERENCE_TICKS = np.array([-1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5], dtype=float)
+SHAP_SIGN_FLIP_FEATURES: set[str] = set()
 LABELS = {
     "SSRD_z": "SSRD",
     "Pre_z": "PRE",
@@ -153,10 +155,17 @@ def compute_pdp(model, X: pd.DataFrame, feature: str, grid_size: int = 25) -> pd
 
 
 def compute_ice_mean(model, X: pd.DataFrame, feature: str, grid_size: int = 25) -> pd.DataFrame:
+    ice = compute_ice_curves(model, X, feature, grid_size=grid_size)
+    if ice.empty:
+        return pd.DataFrame()
+    return ice.groupby("feature_value", as_index=False)["effect"].mean()
+
+
+def compute_ice_curves(model, X: pd.DataFrame, feature: str, grid_size: int = 25, n_samples: int = 60) -> pd.DataFrame:
     grid = quantile_grid(X[feature], grid_size=grid_size)
     if len(grid) < 2:
         return pd.DataFrame()
-    sample = X.sample(n=min(60, len(X)), random_state=42).copy()
+    sample = X.sample(n=min(n_samples, len(X)), random_state=42).copy()
     base = model.predict(sample)
     rows = []
     for sample_pos, (_, row) in enumerate(sample.iterrows()):
@@ -164,9 +173,8 @@ def compute_ice_mean(model, X: pd.DataFrame, feature: str, grid_size: int = 25) 
         repeated[feature] = grid
         effects = model.predict(repeated) - base[sample_pos]
         for value, effect in zip(grid, effects):
-            rows.append({"feature_value": float(value), "effect": float(effect)})
-    ice = pd.DataFrame(rows)
-    return ice.groupby("feature_value", as_index=False)["effect"].mean()
+            rows.append({"sample_index": int(sample_pos), "feature_value": float(value), "effect": float(effect)})
+    return pd.DataFrame(rows)
 
 
 def build_orthogonal_xy(module, metric: str, biome: str) -> tuple[pd.DataFrame, pd.Series, object]:
@@ -195,13 +203,23 @@ def build_orthogonal_xy(module, metric: str, biome: str) -> tuple[pd.DataFrame, 
 def compute_or_load_curves(module, metric: str, biome: str) -> dict[str, dict[str, pd.DataFrame]]:
     curve_dir = OUT / "curves" / metric / biome
     curve_dir.mkdir(parents=True, exist_ok=True)
-    expected = [curve_dir / f"{feature}_ale.csv" for feature in FEATURE_ORDER]
+    expected = []
+    for feature in FEATURE_ORDER:
+        expected.extend(
+            [
+                curve_dir / f"{feature}_ale.csv",
+                curve_dir / f"{feature}_ice_mean.csv",
+                curve_dir / f"{feature}_ice_samples.csv",
+                curve_dir / f"{feature}_pdp.csv",
+            ]
+        )
     if all(p.exists() for p in expected):
         curves = {}
         for feature in FEATURE_ORDER:
             curves[feature] = {
                 "ALE": pd.read_csv(curve_dir / f"{feature}_ale.csv"),
                 "ICE mean": pd.read_csv(curve_dir / f"{feature}_ice_mean.csv"),
+                "ICE samples": pd.read_csv(curve_dir / f"{feature}_ice_samples.csv"),
                 "PDP": pd.read_csv(curve_dir / f"{feature}_pdp.csv"),
             }
         return curves
@@ -209,12 +227,14 @@ def compute_or_load_curves(module, metric: str, biome: str) -> dict[str, dict[st
     curves = {}
     for feature in FEATURE_ORDER:
         ale = compute_ale(model, X, feature)
-        ice = compute_ice_mean(model, X, feature)
+        ice_samples = compute_ice_curves(model, X, feature)
+        ice = ice_samples.groupby("feature_value", as_index=False)["effect"].mean() if not ice_samples.empty else pd.DataFrame()
         pdp = compute_pdp(model, X, feature)
         ale.to_csv(curve_dir / f"{feature}_ale.csv", index=False)
         ice.to_csv(curve_dir / f"{feature}_ice_mean.csv", index=False)
+        ice_samples.to_csv(curve_dir / f"{feature}_ice_samples.csv", index=False)
         pdp.to_csv(curve_dir / f"{feature}_pdp.csv", index=False)
-        curves[feature] = {"ALE": ale, "ICE mean": ice, "PDP": pdp}
+        curves[feature] = {"ALE": ale, "ICE mean": ice, "ICE samples": ice_samples, "PDP": pdp}
     return curves
 
 
@@ -249,7 +269,15 @@ def binned_trend(x: np.ndarray, y: np.ndarray, bins: int = 30) -> tuple[np.ndarr
     return np.asarray(xs), np.asarray(ys)
 
 
-def plot_curve(ax: plt.Axes, df: pd.DataFrame, color: str, label: str, ls: str = "-") -> None:
+def plot_curve(
+    ax: plt.Axes,
+    df: pd.DataFrame,
+    color: str,
+    label: str,
+    ls: str = "-",
+    x_transform=None,
+    y_multiplier: float = 1.0,
+) -> None:
     if df.empty:
         return
     x = pd.to_numeric(df["feature_value"], errors="coerce").to_numpy(dtype=float)
@@ -257,8 +285,26 @@ def plot_curve(ax: plt.Axes, df: pd.DataFrame, color: str, label: str, ls: str =
     ok = np.isfinite(x) & np.isfinite(y)
     x = x[ok]
     y = y[ok]
+    y = y * y_multiplier
+    if x_transform is not None:
+        x = x_transform(x)
     order = np.argsort(x)
     ax.plot(x[order], y[order], color=color, lw=1.55, ls=ls, label=label, alpha=0.95)
+
+
+def plot_ice_samples(ax: plt.Axes, df: pd.DataFrame, max_lines: int = 30) -> None:
+    if df.empty or "sample_index" not in df.columns:
+        return
+    for _, sub in list(df.groupby("sample_index", sort=True))[:max_lines]:
+        x = pd.to_numeric(sub["feature_value"], errors="coerce").to_numpy(dtype=float)
+        y = pd.to_numeric(sub["effect"], errors="coerce").to_numpy(dtype=float)
+        ok = np.isfinite(x) & np.isfinite(y)
+        if np.count_nonzero(ok) < 2:
+            continue
+        x = x[ok]
+        y = y[ok]
+        order = np.argsort(x)
+        ax.plot(x[order], y[order], color="#66a61e", lw=0.42, alpha=0.14, zorder=1)
 
 
 def load_opgd_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -267,7 +313,7 @@ def load_opgd_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
     return opgd, reliability
 
 
-def plot_panel(ax: plt.Axes, dep: pd.DataFrame, feature: str, metric: str, biome: str, curves: dict[str, pd.DataFrame], opgd: pd.DataFrame, reliability: pd.DataFrame) -> None:
+def compute_panel_xlim(dep: pd.DataFrame, feature: str) -> tuple[float, float]:
     x = pd.to_numeric(dep[f"feature__{feature}"], errors="coerce").to_numpy(dtype=float)
     y = pd.to_numeric(dep[f"shap__{feature}"], errors="coerce").to_numpy(dtype=float)
     ok = np.isfinite(x) & np.isfinite(y)
@@ -278,21 +324,67 @@ def plot_panel(ax: plt.Axes, dep: pd.DataFrame, feature: str, metric: str, biome
         ylo, yhi = np.nanquantile(y, [0.005, 0.995])
         keep = (x >= xlo) & (x <= xhi) & (y >= ylo) & (y <= yhi)
         x = x[keep]
+    return robust_limits(x)
+
+
+def linear_x_mapper(source_xlim: tuple[float, float], target_xlim: tuple[float, float]):
+    src_lo, src_hi = source_xlim
+    dst_lo, dst_hi = target_xlim
+    if not all(np.isfinite([src_lo, src_hi, dst_lo, dst_hi])) or src_hi <= src_lo or dst_hi <= dst_lo:
+        return None
+
+    def mapper(values: np.ndarray) -> np.ndarray:
+        arr = np.asarray(values, dtype=float)
+        return dst_lo + (arr - src_lo) / (src_hi - src_lo) * (dst_hi - dst_lo)
+
+    return mapper
+
+
+def plot_panel(
+    ax: plt.Axes,
+    dep: pd.DataFrame,
+    feature: str,
+    metric: str,
+    biome: str,
+    curves: dict[str, pd.DataFrame],
+    opgd: pd.DataFrame,
+    reliability: pd.DataFrame,
+    xlim_override: tuple[float, float] | None = None,
+    xticks_override: np.ndarray | None = None,
+    x_transform=None,
+) -> None:
+    x = pd.to_numeric(dep[f"feature__{feature}"], errors="coerce").to_numpy(dtype=float)
+    y = pd.to_numeric(dep[f"shap__{feature}"], errors="coerce").to_numpy(dtype=float)
+    if feature in SHAP_SIGN_FLIP_FEATURES:
+        y = -y
+    ok = np.isfinite(x) & np.isfinite(y)
+    x = x[ok]
+    y = y[ok]
+    if len(x):
+        xlo, xhi = np.nanquantile(x, [0.01, 0.99])
+        ylo, yhi = np.nanquantile(y, [0.005, 0.995])
+        keep = (x >= xlo) & (x <= xhi) & (y >= ylo) & (y <= yhi)
+        x = x[keep]
         y = y[keep]
-    ax.scatter(x, y, s=5, alpha=0.17, color="#4d4d4d", linewidths=0, rasterized=True)
-    tx, ty = binned_trend(x, y)
+    plot_x = x_transform(x) if x_transform is not None else x
+    ax.scatter(plot_x, y, s=5, alpha=0.17, color="#4d4d4d", linewidths=0, rasterized=True)
+    tx, ty = binned_trend(plot_x, y)
     if len(tx) > 1:
         ax.plot(tx, ty, color="#000000", lw=1.55, label="SHAP trend")
-    plot_curve(ax, curves["ALE"], "#d95f02", "ALE")
-    plot_curve(ax, curves["ICE mean"], "#1b9e77", "ICE mean")
-    plot_curve(ax, curves["PDP"], "#7570b3", "PDP", ls="--")
+    y_multiplier = -1.0 if feature in SHAP_SIGN_FLIP_FEATURES else 1.0
+    plot_curve(ax, curves["ALE"], "#d95f02", "ALE", x_transform=x_transform, y_multiplier=y_multiplier)
+    plot_curve(ax, curves["ICE mean"], "#1b9e77", "ICE mean", x_transform=x_transform, y_multiplier=y_multiplier)
+    plot_curve(ax, curves["PDP"], "#7570b3", "PDP", ls="--", x_transform=x_transform, y_multiplier=y_multiplier)
     ax.axhline(0, color="#777777", lw=0.75, ls=":", alpha=0.9)
-    ax.set_xlim(*robust_limits(x))
-    effect_values = [y]
-    for df in curves.values():
-        if not df.empty:
-            effect_values.append(pd.to_numeric(df["effect"], errors="coerce").to_numpy(dtype=float))
-    ax.set_ylim(*robust_limits(np.concatenate(effect_values), 0.005, 0.995))
+    xlim = xlim_override if xlim_override is not None else robust_limits(plot_x)
+    ax.set_xlim(*xlim)
+    if xticks_override is not None and len(xticks_override) > 0:
+        ticks = np.asarray(xticks_override, dtype=float)
+        ticks = ticks[(ticks >= xlim[0]) & (ticks <= xlim[1])]
+        if len(ticks) > 0:
+            ax.set_xticks(ticks)
+            ax.set_xticklabels([f"{value:.1f}" for value in ticks])
+    ax.set_ylim(*robust_limits(y, 0.0, 1.0))
 
     raw = RAW_FEATURE_BY_ORTHO[feature]
     q_row = opgd[(opgd.metric == metric) & (opgd.biome == biome) & (opgd.feature == raw)]
@@ -330,8 +422,28 @@ def draw_biome_figures(module) -> list[Path]:
         curves = {metric: compute_or_load_curves(module, metric, biome) for metric in METRICS}
         fig, axes = plt.subplots(len(FEATURE_ORDER), 2, figsize=(12.8, 24.0))
         for i, feature in enumerate(FEATURE_ORDER):
+            gpp_pre_xlim = compute_panel_xlim(dep["GPP"], feature) if feature == "Pre_z" else None
+            reco_pre_xlim = compute_panel_xlim(dep["RECO"], feature) if feature == "Pre_z" else None
+            reco_to_gpp_pre = (
+                linear_x_mapper(reco_pre_xlim, gpp_pre_xlim)
+                if feature == "Pre_z" and gpp_pre_xlim is not None and reco_pre_xlim is not None
+                else None
+            )
             for j, metric in enumerate(METRICS):
-                plot_panel(axes[i, j], dep[metric], feature, metric, biome, curves[metric][feature], opgd, reliability)
+                use_pre_reference_axis = feature == "Pre_z" and gpp_pre_xlim is not None
+                plot_panel(
+                    axes[i, j],
+                    dep[metric],
+                    feature,
+                    metric,
+                    biome,
+                    curves[metric][feature],
+                    opgd,
+                    reliability,
+                    xlim_override=gpp_pre_xlim if use_pre_reference_axis else None,
+                    xticks_override=PRE_REFERENCE_TICKS if use_pre_reference_axis else None,
+                    x_transform=reco_to_gpp_pre if feature == "Pre_z" and metric == "RECO" else None,
+                )
             axes[i, 0].text(
                 -0.30,
                 0.5,

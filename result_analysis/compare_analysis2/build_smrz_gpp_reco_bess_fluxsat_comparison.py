@@ -27,6 +27,9 @@ SPATIAL_PNG = os.path.join(
 TREND_PNG = os.path.join(
     OUT_DIR, "smrz_gpp_reco_recovery_trend_bess_fluxsat_compare.png"
 )
+TREND_WITH_BAR_PNG = os.path.join(
+    OUT_DIR, "smrz_gpp_reco_recovery_trend_bess_fluxsat_compare_with_bar.png"
+)
 
 ANNUAL_FLUXSAT_CSV = (
     f"{BASE_DIR}/process/result_analysis/result_weighted/fluxsat_compare_analysis2/"
@@ -48,34 +51,43 @@ class SpatialPanel:
     col: int
     title: str
     event_file: str | None
+    letter: str
 
 
 SPATIAL_PANELS = [
     SpatialPanel(
-        0,
-        0,
-        "GPP - BESS",
-        f"{BASE_DIR}/process/GPP-draught-analysis/code1/results/"
-        "gpp_response_SMrz_events_global_v20260401_growingseason_recovery_gsdays_"
-        "rel0_abspeak_absrec_c30x095_w420_decline30_d5_norecmax.nc",
+        row=0,
+        col=0,
+        title="GPP - BESS",
+        letter="a",
+        event_file=(
+            f"{BASE_DIR}/process/GPP-draught-analysis/code1/results/"
+            "gpp_response_SMrz_events_global_v20260401_growingseason_recovery_gsdays_"
+            "rel0_abspeak_absrec_c30x095_w420_decline30_d5_norecmax.nc"
+        ),
     ),
     SpatialPanel(
-        0,
-        1,
-        "GPP - FluxSat",
-        f"{BASE_DIR}/process/fluxsat-draught-analysis/code1/results/"
-        "fluxsat_gpp_response_SMrz_events_global_v20260401_growingseason_recovery_gsdays_"
-        "rel0_abspeak_absrec_c30x095_w420_decline30_d5_rec100cap_fixlon_v20260426.nc",
+        row=0,
+        col=2,
+        title="GPP - FluxSat",
+        letter="b",
+        event_file=(
+            f"{BASE_DIR}/process/fluxsat-draught-analysis/code1/results/"
+            "fluxsat_gpp_response_SMrz_events_global_v20260401_growingseason_recovery_gsdays_"
+            "rel0_abspeak_absrec_c30x095_w420_decline30_d5_rec100cap_fixlon_v20260426.nc"
+        ),
     ),
     SpatialPanel(
-        1,
-        0,
-        "RECO - BESS",
-        f"{BASE_DIR}/process/RECO-draught-analysis/code1/results/"
-        "reco_response_SMrz_events_global_v20260401_growingseason_recovery_gsdays_"
-        "rel0_abspeak_absrec_c30x095_w420_decline30_d5_norecmax.nc",
+        row=1,
+        col=1,
+        title="RECO - BESS",
+        letter="c",
+        event_file=(
+            f"{BASE_DIR}/process/RECO-draught-analysis/code1/results/"
+            "reco_response_SMrz_events_global_v20260401_growingseason_recovery_gsdays_"
+            "rel0_abspeak_absrec_c30x095_w420_decline30_d5_norecmax.nc"
+        ),
     ),
-    SpatialPanel(1, 1, "RECO - FluxSat", None),
 ]
 
 
@@ -189,34 +201,28 @@ def plot_spatial() -> None:
     vmin = float(np.nanpercentile(joined, 2))
     vmax = float(np.nanpercentile(joined, 98))
 
-    fig, axes = plt.subplots(2, 2, figsize=(15.8, 8.8), constrained_layout=True)
+    fig = plt.figure(figsize=(17.4, 9.5), constrained_layout=False)
+    gs = fig.add_gridspec(
+        2,
+        4,
+        width_ratios=[1, 1, 1, 1],
+        height_ratios=[1, 1],
+        left=0.055,
+        right=0.90,
+        bottom=0.08,
+        top=0.89,
+        wspace=0.17,
+        hspace=0.16,
+    )
+    axes = {
+        (0, 0): fig.add_subplot(gs[0, 0:2]),
+        (0, 2): fig.add_subplot(gs[0, 2:4]),
+        (1, 1): fig.add_subplot(gs[1, 1:3]),
+    }
     im = None
     for panel in SPATIAL_PANELS:
-        ax = axes[panel.row, panel.col]
-        ax.set_title(panel.title, fontsize=17)
-        if panel.event_file is None:
-            ax.axis("off")
-            ax.text(
-                0.5,
-                0.55,
-                "FluxSat provides GPP only\n(no RECO product)",
-                ha="center",
-                va="center",
-                fontsize=17,
-                color="#4D4D4D",
-                transform=ax.transAxes,
-            )
-            ax.text(
-                0.5,
-                0.38,
-                "RECO panel is intentionally left blank.",
-                ha="center",
-                va="center",
-                fontsize=12.5,
-                color="#666666",
-                transform=ax.transAxes,
-            )
-            continue
+        ax = axes[(panel.row, panel.col)]
+        ax.set_title(panel.title, fontsize=16)
         data = loaded[(panel.row, panel.col)]
         im = ax.imshow(
             data["recovery_mean_days"],
@@ -231,13 +237,28 @@ def plot_spatial() -> None:
         ax.set_xlabel("Longitude", fontsize=12)
         ax.set_ylabel("Latitude", fontsize=12)
         ax.tick_params(labelsize=10.5)
+        if panel.letter == "b":
+            ax.set_ylabel("")
+            ax.tick_params(axis="y", labelleft=False)
+        ax.text(
+            0.03,
+            0.97,
+            panel.letter,
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
+            fontsize=16,
+            fontweight="bold",
+            color="#111111",
+            bbox={"facecolor": "white", "alpha": 0.75, "edgecolor": "none", "pad": 0.15},
+        )
 
     fig.suptitle(
         f"SMrz Recovery Time Mean After Flash Drought ({START_YEAR}-{END_YEAR})",
         fontsize=22,
     )
     if im is not None:
-        cbar = fig.colorbar(im, ax=axes.ravel().tolist(), shrink=0.92, pad=0.015)
+        cbar = fig.colorbar(im, ax=list(axes.values()), shrink=0.90, pad=0.02, fraction=0.028)
         cbar.set_label("Recovery Time Mean (days)", fontsize=12.5)
         cbar.ax.tick_params(labelsize=10.5)
     fig.savefig(SPATIAL_PNG, dpi=220, bbox_inches="tight")
@@ -264,11 +285,15 @@ def plot_trend() -> None:
         and row["soil_layer"] == "SMrz"
     ]
 
-    fig, axes = plt.subplots(2, 1, figsize=(11.4, 8.4), sharex=True, constrained_layout=True)
+    fig = plt.figure(figsize=(15.2, 8.4), constrained_layout=True)
+    gs = fig.add_gridspec(2, 2, width_ratios=[3.25, 1.0], height_ratios=[1, 1])
+    axes = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[1, 0])]
+    bar_ax = fig.add_subplot(gs[:, 1])
     styles = {
         "BESS 0401": {"color": "#CC6677", "marker": "o", "label": "BESS"},
         "FluxSat 0401 rec100cap": {"color": "#0072B2", "marker": "s", "label": "FluxSat"},
     }
+    bar_values: list[tuple[str, float, str]] = []
 
     ax = axes[0]
     for dataset in ["BESS 0401", "FluxSat 0401 rec100cap"]:
@@ -290,6 +315,8 @@ def plot_trend() -> None:
             label=style["label"],
         )
         add_trend_line(ax, years, values, style["color"])
+        bar_label = "BESS-GPP" if dataset == "BESS 0401" else "FluxSat-GPP"
+        bar_values.append((bar_label, float(np.nanmean(values)), style["color"]))
     ax.set_title("GPP - SMrz: BESS vs FluxSat", fontsize=19)
     ax.set_ylabel("Recovery Time Mean (days)", fontsize=15)
     ax.grid(True, linestyle="--", linewidth=0.6, alpha=0.35)
@@ -310,16 +337,7 @@ def plot_trend() -> None:
         label="BESS RECO",
     )
     add_trend_line(ax, years, values, "#CC6677")
-    ax.text(
-        0.02,
-        0.93,
-        "FluxSat has no RECO product; comparison is unavailable.",
-        transform=ax.transAxes,
-        ha="left",
-        va="top",
-        fontsize=11.5,
-        color="#555555",
-    )
+    bar_values.append(("BESS-RECO", float(np.nanmean(values)), "#882255"))
     ax.set_title("RECO - SMrz: BESS", fontsize=19)
     ax.set_ylabel("Recovery Time Mean (days)", fontsize=15)
     ax.set_xlabel("Year", fontsize=15)
@@ -328,8 +346,27 @@ def plot_trend() -> None:
     ax.tick_params(axis="both", labelsize=12.5)
 
     axes[0].set_xlim(1981.5, 2021.5)
+    axes[1].set_xlim(1981.5, 2021.5)
+
+    bar_labels = [item[0] for item in bar_values]
+    bar_heights = np.array([item[1] for item in bar_values], dtype=np.float64)
+    bar_colors = [item[2] for item in bar_values]
+    x = np.arange(len(bar_labels))
+    bar_ax.bar(x, bar_heights, color=bar_colors, width=0.68, edgecolor="#333333", linewidth=0.6)
+    bar_ax.set_title("Mean recovery time", fontsize=17)
+    bar_ax.set_ylabel("Recovery Time Mean (days)", fontsize=14)
+    bar_ax.set_xticks(x)
+    bar_ax.set_xticklabels(bar_labels, rotation=30, ha="right", fontsize=12)
+    bar_ax.tick_params(axis="y", labelsize=12)
+    bar_ax.grid(True, axis="y", linestyle="--", linewidth=0.6, alpha=0.30)
+    if np.isfinite(bar_heights).any():
+        ymax = float(np.nanmax(bar_heights)) * 1.22
+        bar_ax.set_ylim(0, ymax)
+        for xi, yi in zip(x, bar_heights, strict=True):
+            bar_ax.text(xi, yi + ymax * 0.025, f"{yi:.1f}", ha="center", va="bottom", fontsize=12)
+
     fig.suptitle("SMrz Recovery Time Trend Following Flash Drought", fontsize=22)
-    fig.savefig(TREND_PNG, dpi=220, bbox_inches="tight")
+    fig.savefig(TREND_WITH_BAR_PNG, dpi=220, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -337,7 +374,7 @@ def main() -> None:
     plot_spatial()
     plot_trend()
     print(f"Wrote {SPATIAL_PNG}")
-    print(f"Wrote {TREND_PNG}")
+    print(f"Wrote {TREND_WITH_BAR_PNG}")
 
 
 if __name__ == "__main__":
